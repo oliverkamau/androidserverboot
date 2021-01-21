@@ -33,6 +33,7 @@ import java.io.IOException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.nio.charset.StandardCharsets;
+import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
@@ -42,6 +43,7 @@ import java.util.stream.Collectors;
 @CrossOrigin(origins = "http://localhost:4200")
 @RestController
 public class UserController {
+    String d="";
 
     private JwtUtil jwtUtil;
     private AuthenticationProvider authenticationProvider;
@@ -691,8 +693,8 @@ public class UserController {
         JSONObject jsonObject = new JSONObject();
         jsonObject.put("ShortCode","600775");
         jsonObject.put("ResponseType","Confirmed");
-        jsonObject.put("ConfirmationURL","https://255dc3c26ebd.ngrok.io/confirmUrl");
-        jsonObject.put("ValidationURL","https://255dc3c26ebd.ngrok.io/validateUrl");
+        jsonObject.put("ConfirmationURL","https://134998533263.ngrok.io/confirmUrl");
+        jsonObject.put("ValidationURL","https://134998533263.ngrok.io/validateUrl");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
         headers.setBearerAuth(authToken());
@@ -754,6 +756,24 @@ public class UserController {
 
         return Objects.requireNonNull(response.getBody()).getAccess_token();
     }
+
+    public String authStkPush(){
+        String u="sMpgnYW62glBlxPXbyTBEGdPib8eJLOL";
+        String p="IcK2PkAFArVVVffU";
+        String credentials=u+":"+p;
+        byte[] bytes=credentials.getBytes(StandardCharsets.ISO_8859_1);
+        String auth= Base64.getEncoder().encodeToString(bytes);
+        String authHeader = "Basic " + auth;
+        HttpHeaders httpHeaders=new HttpHeaders();
+        httpHeaders.set("Authorization", authHeader);
+        httpHeaders.set("cache-control","no-cache");
+        HttpEntity<String> request = new HttpEntity<>(httpHeaders);
+        String url="https://sandbox.safaricom.co.ke/oauth/v1/generate?grant_type=client_credentials";
+        ResponseEntity<MpesaToken> response = restTemplate.exchange(url, HttpMethod.GET, request, MpesaToken.class);
+
+        return Objects.requireNonNull(response.getBody()).getAccess_token();
+    }
+
     @PostMapping("createTransaction")
     public ResponseEntity<ResponseBean> createTransaction(@RequestBody MpesaCall mpesaCall) throws IOException {
 
@@ -779,6 +799,79 @@ public class UserController {
           responseBean.setMessage("successful");
 
         return ResponseEntity.ok(responseBean);
+    }
+
+    /*public String getLipaPassword(){
+
+        Date date=new Date();
+        long time = date.getTime();
+        Timestamp ts = new Timestamp(time);
+        DateFormat dateFormat = new SimpleDateFormat("YmdHms");
+        d=dateFormat.format(ts);
+        System.out.println("First Timestamp :"+d);
+        String passKey="bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
+        String business="174379";
+        String enc=business+passKey+d;
+        return Base64.getEncoder().encodeToString(enc.getBytes());
+    }
+
+     */
+
+    @GetMapping("/generateStkPush")
+    public String generateStkPush(){
+        long pic=254722453191L;
+        JSONObject json=new JSONObject();
+        Date date=new Date();
+        //long time = date.getTime();
+        //Timestamp ts = new Timestamp(time);
+        DateFormat dateFormat = new SimpleDateFormat("YmdHms");
+        String c=dateFormat.format(date);
+        System.out.println("First Timestamp :"+c);
+        String passKey="bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
+        String business="174379";
+        String enc=business+passKey+c;
+        String encoded=Base64.getEncoder().encodeToString(enc.getBytes());
+          System.out.println("Second Timestamp :"+c);
+        json.put("BusinessShortCode","174379");
+        json.put("Password",encoded);
+        json.put("Timestamp",c);
+        json.put("TransactionType","CustomerPayBillOnline");
+        json.put("Amount","1");
+        json.put("PartyA", pic);
+        json.put("PartyB","174379");
+        json.put("PhoneNumber",pic);
+        json.put("CallBackURL","https://134998533263.ngrok.io/validateUrl");
+        json.put("AccountReference","Premium Reference");
+        json.put("TransactionDesc","Testing stk push on sandbox");
+        /*
+
+        'BusinessShortCode' => 174379,
+                'Password' => $this->lipaNaMpesaPassword(),
+                'Timestamp' => Carbon::rawParse('now')->format('YmdHms'),
+                'TransactionType' => 'CustomerPayBillOnline',
+                'Amount' => 5,
+                'PartyA' => 254728858889, // replace this with your phone number
+                'PartyB' => 174379,
+                'PhoneNumber' => 254728858889, // replace this with your phone number
+                'CallBackURL' => 'https://blog.hlab.tech/',
+                'AccountReference' => "H-lab tutorial",
+                'TransactionDesc' => "Testing stk push on sandbox"
+
+         */
+
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(authStkPush());
+        HttpEntity<String> request =
+                new HttpEntity<>(json.toString(),headers);
+
+        String url="https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
+
+
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+
+        return response.getBody();
     }
 
 }
