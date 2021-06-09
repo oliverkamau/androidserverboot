@@ -8,9 +8,7 @@ import com.jwt.auth.model.AuthRequest;
 import com.jwt.auth.model.AuthResponse;
 import com.jwt.auth.model.MotorFormBean;
 import com.jwt.auth.model.User;
-import com.jwt.auth.mpesa.C2BPaymentDetails;
-import com.jwt.auth.mpesa.MpesaCall;
-import com.jwt.auth.mpesa.MpesaToken;
+import com.jwt.auth.mpesa.*;
 import com.jwt.auth.quotes.*;
 import com.jwt.auth.repo.*;
 import com.jwt.auth.service.SystemUserDetails;
@@ -19,7 +17,9 @@ import com.jwt.auth.trans.repo.ReceiptDetailsRepo;
 import com.jwt.auth.util.JwtUtil;
 import com.jwt.auth.uw.model.*;
 import com.jwt.auth.uw.model.QuoteDetailsBean;
+import org.json.JSONArray;
 import org.json.JSONObject;
+import org.json.simple.parser.JSONParser;
 import org.springframework.http.*;
 import org.springframework.security.authentication.AuthenticationProvider;
 import org.springframework.security.authentication.BadCredentialsException;
@@ -37,6 +37,8 @@ import java.sql.Timestamp;
 import java.text.DateFormat;
 import java.text.ParseException;
 import java.text.SimpleDateFormat;
+import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.*;
 import java.util.stream.Collectors;
 
@@ -691,10 +693,10 @@ public class UserController {
     @GetMapping("/registerUrl")
     public String register(){
         JSONObject jsonObject = new JSONObject();
-        jsonObject.put("ShortCode","600775");
+        jsonObject.put("ShortCode","600000");
         jsonObject.put("ResponseType","Confirmed");
-        jsonObject.put("ConfirmationURL","https://134998533263.ngrok.io/confirmUrl");
-        jsonObject.put("ValidationURL","https://134998533263.ngrok.io/validateUrl");
+        jsonObject.put("ConfirmationURL","https://53ab9142a57d.ngrok.io/confirmUrl");
+        jsonObject.put("ValidationURL","https://e350a58d406a.ngrok.io/validateUrl");
         HttpHeaders headers = new HttpHeaders();
         headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
         headers.setBearerAuth(authToken());
@@ -730,8 +732,72 @@ public class UserController {
     }
     @RequestMapping(value = "validateUrl", method = RequestMethod.POST,
             produces = MediaType.APPLICATION_JSON_VALUE)
-    public @ResponseBody String validateUrl(@RequestBody String transactions){
+    public @ResponseBody String validateUrl(@RequestBody String transactions) throws org.json.simple.parser.ParseException, ParseException {
+
+        JSONParser parser = new JSONParser();
+        Object obj = parser.parse(transactions);
+        JSONObject json = new JSONObject(obj.toString());
+
+
+
         System.out.println("Validation url.... "+transactions);
+
+        JSONArray jsonArray=json.getJSONObject("Body")
+                .getJSONObject("stkCallback").getJSONObject("CallbackMetadata").
+                        getJSONArray("Item");
+
+        List<StkCredentials> map = new ArrayList<>();
+
+        for (int i = 0; i < jsonArray.length(); i++) {
+            JSONObject cred = jsonArray.getJSONObject(i);
+            System.out.println(cred.toString());
+            if(cred.has("Value")){
+
+                StkCredentials stkCredentials=new StkCredentials();
+                stkCredentials.setKey(cred.getString("Name"));
+                stkCredentials.setValue(cred.get("Value").toString());
+                map.add(stkCredentials);
+
+            }
+            else{
+
+                StkCredentials stkCredentials=new StkCredentials();
+                stkCredentials.setKey(cred.getString("Name"));
+                stkCredentials.setValue("N/A");
+                map.add(stkCredentials);
+            }
+
+        }
+        StkReceipts stkDtls=new StkReceipts();
+        for (StkCredentials stk:map){
+
+            System.out.println(stk.getKey()+","+stk.getValue());
+
+            if(stk.getKey().equalsIgnoreCase("Amount")){
+                stkDtls.setAmmount(stk.getValue());
+            }
+            else if(stk.getKey().equalsIgnoreCase("MpesaReceiptNumber")){
+                stkDtls.setReceiptNo(stk.getValue());
+
+            }
+            else if(stk.getKey().equalsIgnoreCase("Balance")){
+                stkDtls.setBalance(stk.getValue());
+
+            }
+            else if(stk.getKey().equalsIgnoreCase("TransactionDate")){
+                Date date=new SimpleDateFormat("yyyyMMddHHmmss").parse(stk.getValue());
+                //stkDtls.setBalance(stk.getValue());
+                String d=new SimpleDateFormat("dd/MM/yyyy").format(date);
+                stkDtls.setDatePaid(d);
+
+            }
+            else if(stk.getKey().equalsIgnoreCase("PhoneNumber")){
+                stkDtls.setPhone(stk.getValue());
+
+            }
+
+        }
+        System.out.print("Receipt "+stkDtls.getReceiptNo()+" Phone "+stkDtls.getPhone()+" Ammount "+stkDtls.getAmmount()+" Balance "+stkDtls.getBalance());
 
         JSONObject jo = new JSONObject();
         jo.put("ResultCode",0);
@@ -739,6 +805,7 @@ public class UserController {
         return jo.toString();
 
     }
+
 
     public String authToken(){
         String u="5qBZOKMtqhG2QG2G1ALTUCANs9kkMmx5";
@@ -774,14 +841,69 @@ public class UserController {
         return Objects.requireNonNull(response.getBody()).getAccess_token();
     }
 
-    @PostMapping("createTransaction")
-    public ResponseEntity<ResponseBean> createTransaction(@RequestBody MpesaCall mpesaCall) throws IOException {
+    @GetMapping("/saveMyMoney")
+    public void getCredets() {
+        JSONObject json = new JSONObject();
+        json.put("name", "Kim");
+        json.put("age", "Twenty");
 
-        String ammount=mpesaCall.getAmmount();
-        JSONObject jsonObject = new JSONObject();
-        jsonObject.put("ShortCode","600775");
+        JSONObject json1 = new JSONObject();
+        json1.put("name", "Kong");
+        json1.put("age", "Twenty");
+
+        JSONObject json2 = new JSONObject();
+        json2.put("name", "Kelly");
+        json2.put("age", "Twenty");
+
+        JSONObject json3 = new JSONObject();
+        json3.put("name", "King");
+
+        JSONArray jsonArray = new JSONArray();
+        jsonArray.put(json);
+        jsonArray.put(json1);
+        jsonArray.put(json2);
+        jsonArray.put(json3);
+
+
+        System.out.println(jsonArray.toString());
+
+        List<StkCredentials> map = new ArrayList<>();
+
+
+        for (int i = 0; i < jsonArray.length(); i++) {
+            JSONObject cred = jsonArray.getJSONObject(i);
+            System.out.println(cred.toString());
+            if(cred.has("age")){
+                StkCredentials stkCredentials=new StkCredentials();
+                stkCredentials.setKey(cred.getString("name"));
+                stkCredentials.setValue(cred.getString("age"));
+                map.add(stkCredentials);
+
+            }
+            else{
+                StkCredentials stkCredentials=new StkCredentials();
+                stkCredentials.setKey(cred.getString("name"));
+                stkCredentials.setValue("N/A");
+                map.add(stkCredentials);
+            }
+
+        }
+        for (StkCredentials stk:map){
+
+            System.out.println(stk.getKey()+","+stk.getValue());
+
+
+        }
+
+    }
+    @PostMapping("createTransaction")
+    public ResponseEntity<ResponseBean> createTransaction(/*@RequestBody MpesaCall mpesaCall */) throws IOException {
+
+//      String ammount=mpesaCall.getAmmount();
+       JSONObject jsonObject = new JSONObject();
+        jsonObject.put("ShortCode","600000");
         jsonObject.put("CommandID","CustomerPayBillOnline");
-        jsonObject.put("Amount",ammount);
+        jsonObject.put("Amount","900");
         jsonObject.put("Msisdn","254708374149");
         jsonObject.put("BillRefNumber","account");
 
@@ -819,13 +941,12 @@ public class UserController {
 
     @GetMapping("/generateStkPush")
     public String generateStkPush(){
-        long pic=254722453191L;
+       // String c = new SimpleDateFormat("").format(new Timestamp(System.currentTimeMillis()));
+        LocalDateTime localDateTime=LocalDateTime.now();
+        DateTimeFormatter formatter = DateTimeFormatter.ofPattern("yyyyMMddHHmmss", Locale.ENGLISH);
+        String c = localDateTime.format(formatter);
+        long pic=254759633686L;
         JSONObject json=new JSONObject();
-        Date date=new Date();
-        //long time = date.getTime();
-        //Timestamp ts = new Timestamp(time);
-        DateFormat dateFormat = new SimpleDateFormat("YmdHms");
-        String c=dateFormat.format(date);
         System.out.println("First Timestamp :"+c);
         String passKey="bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
         String business="174379";
@@ -840,8 +961,8 @@ public class UserController {
         json.put("PartyA", pic);
         json.put("PartyB","174379");
         json.put("PhoneNumber",pic);
-        json.put("CallBackURL","https://134998533263.ngrok.io/validateUrl");
-        json.put("AccountReference","Premium Reference");
+        json.put("CallBackURL","https://e1b9a7db5a7b.ngrok.io/validateUrl");
+        json.put("AccountReference","Gabriel Kamau");
         json.put("TransactionDesc","Testing stk push on sandbox");
         /*
 
@@ -873,5 +994,66 @@ public class UserController {
 
         return response.getBody();
     }
+
+    @GetMapping("/generateClientStkPush")
+    public String generateClientStkPush(@RequestBody MpesaCall mpesaCall){
+
+        Long phone=Long.parseLong(mpesaCall.getPhone());
+        String ammt=mpesaCall.getAmmount();
+       // long pic=254725954981L;
+        JSONObject json=new JSONObject();
+
+        //long time = date.getTime();
+        //Timestamp ts = new Timestamp(time);
+        DateFormat dateFormat = new SimpleDateFormat("YmdHms");
+        String c=dateFormat.format(new Date());
+        System.out.println("First Timestamp :"+c);
+        String passKey="bfb279f9aa9bdbcf158e97dd71a467cd2e0c893059b10f78e6b72ada1ed2c919";
+        String business="174379";
+        String enc=business+passKey+c;
+        String encoded=Base64.getEncoder().encodeToString(enc.getBytes());
+        System.out.println("Second Timestamp :"+c);
+        json.put("BusinessShortCode","174379");
+        json.put("Password",encoded);
+        json.put("Timestamp",c);
+        json.put("TransactionType","CustomerPayBillOnline");
+        json.put("Amount","1");
+        json.put("PartyA", phone);
+        json.put("PartyB","174379");
+        json.put("PhoneNumber",phone);
+        json.put("CallBackURL","https://5723d23da296.ngrok.io/validateUrl");
+        json.put("AccountReference","Rensoft Solutions Limited");
+        json.put("TransactionDesc","Testing stk push on sandbox");
+        /*
+
+        'BusinessShortCode' => 174379,
+                'Password' => $this->lipaNaMpesaPassword(),
+                'Timestamp' => Carbon::rawParse('now')->format('YmdHms'),
+                'TransactionType' => 'CustomerPayBillOnline',
+                'Amount' => 5,
+                'PartyA' => 254728858889, // replace this with your phone number
+                'PartyB' => 174379,
+                'PhoneNumber' => 254728858889, // replace this with your phone number
+                'CallBackURL' => 'https://blog.hlab.tech/',
+                'AccountReference' => "H-lab tutorial",
+                'TransactionDesc' => "Testing stk push on sandbox"
+
+         */
+
+
+        HttpHeaders headers = new HttpHeaders();
+        headers.setContentType(org.springframework.http.MediaType.APPLICATION_JSON);
+        headers.setBearerAuth(authStkPush());
+        HttpEntity<String> request =
+                new HttpEntity<>(json.toString(),headers);
+
+        String url="https://sandbox.safaricom.co.ke/mpesa/stkpush/v1/processrequest";
+
+
+        ResponseEntity<String> response = restTemplate.exchange(url, HttpMethod.POST, request, String.class);
+
+        return response.getBody();
+    }
+
 
 }

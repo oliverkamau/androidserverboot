@@ -52,7 +52,7 @@ public class SecurityConfig extends WebSecurityConfigurerAdapter {
                 .csrf()
                 .disable()
                 .authorizeRequests()
-                .antMatchers("/authenticate","/confirmUrl","/validateUrl","/registerUrl","/createTransaction","/generateStkPush")
+                .antMatchers("/authenticate","/confirmUrl","/validateUrl","/registerUrl","/createTransaction","/generateStkPush","/saveMyMoney")
                 .permitAll()
                 .antMatchers(HttpMethod.OPTIONS,"/**").permitAll()
                 .anyRequest().authenticated()
